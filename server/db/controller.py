@@ -7,6 +7,7 @@ from collections.abc import Iterable
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import functions as F
 import numpy as np
 from nptyping import NDArray
 
@@ -64,21 +65,27 @@ class SimpleDBController(metaclass=ABCMeta):
     def add(self, **kwargs) -> NoReturn:
         raise NotImplementedError
 
-    def get(self) -> List[Dict[Any]]:
+    def get(self, ordered: bool = False) -> List[Dict[Any]]:
         with self:
-            data = self._get()
+            data = self._get(ordered)
         return data
 
     @abstractmethod
-    def _get(self) -> List[Dict[Any]]:
+    def _get(self, ordered: bool) -> List[Dict[Any]]:
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, *kwargs) -> NoReturn:
+    def delete(self, *kwargs) -> List[Dict[Any]]:
         raise NotImplementedError
 
 
 class MatchResultDBController(SimpleDBController):
+    @property
+    def current_id(self) -> int:
+        with self:
+            stmt = select(F.max(MatchResult.id))
+            return self._session.execute(stmt).scalars().one()
+
     def add(self, match_ids: Union[int, NDArray[int]],
             winners: Union[int, NDArray[int]],
             losers: Union[int, NDArray[int]],
@@ -94,8 +101,10 @@ class MatchResultDBController(SimpleDBController):
                                 triggered_by=triggered_by.item())
             self._session.add(match)
 
-    def _get(self) -> List[Dict[Any]]:
+    def _get(self, ordered: bool) -> List[Dict[Any]]:
         stmt = select(MatchResult)
+        if ordered:
+            stmt = stmt.order_by(MatchResult.id)
         result = self._session.execute(stmt).scalars().all()
         return [
             {
@@ -107,15 +116,32 @@ class MatchResultDBController(SimpleDBController):
             for row in result
         ]
 
-    def delete(self, triger_id: int) -> NoReturn:
-        stmt = select(MatchResult).filter_by(triggered_by=triger_id)
+    def delete(self, triger_id: int) -> List[Dict[Any]]:
+        stmt = select(MatchResult).\
+               filter_by(triggered_by=triger_id).\
+               order_by(MatchResult.id)
         matches = self._session.execute(stmt).scalars().all()
 
+        deleted = list()
         for match in matches:
             self._session.delete(match)
+            deleted.append({
+                'id': match.id,
+                'winner': match.winner,
+                'loser': match.loser,
+                'trigger_id': match.triggered_by,
+            })
+
+        return deleted
 
 
 class RatedMatchResultDBController(SimpleDBController):
+    @property
+    def current_id(self) -> int:
+        with self:
+            stmt = select(F.max(MatchResult.id))
+            return self._session.execute(stmt).scalars().one()
+
     def add(self, match_ids: Union[int, NDArray[int]],
             winners: Union[int, NDArray[int]],
             losers: Union[int, NDArray[int]],
@@ -136,9 +162,11 @@ class RatedMatchResultDBController(SimpleDBController):
             self._session.add(match)
             self._session.add(rate)
 
-    def _get(self) -> List[Dict[Any]]:
+    def _get(self, ordered: bool) -> List[Dict[Any]]:
         stmt = select(MatchResult, Rate).\
                 join(Rate, MatchResult.id == Rate.match_id)
+        if ordered:
+            stmt = stmt.order_by(MatchResult.id)
         result = self._session.execute(stmt).all()
         return [
             {
@@ -155,13 +183,25 @@ class RatedMatchResultDBController(SimpleDBController):
     def delete(self, trigger_id: int) -> NoReturn:
         stmt = select(MatchResult, Rate).\
             filter_by(triggered_by=trigger_id).\
-            join(Rate, MatchResult.id == Rate.match_id)
+            join(Rate, MatchResult.id == Rate.match_id).\
+            order_by(MatchResult.id)
 
         result = self._session.execute(stmt)
 
+        deleted = list()
         for (match, rate) in result:
             self._session.delete(match)
             self._session.delete(rate)
+            deleted.append({
+                'id': match.id,
+                'winner': match.winner,
+                'loser': match.loser,
+                'trigger_id': match.triggered_by,
+                'winner_rate': rate.winner_rate,
+                'loser_rate': rate.loser_rate,
+            })
+
+        return deleted
 
 
 class ItemLabelDBController(SimpleDBController):
@@ -173,8 +213,10 @@ class ItemLabelDBController(SimpleDBController):
             item = ItemLabel(id=id.item(), label=label.item())
             self._session.add(item)
 
-    def _get(self) -> List[Dict[Any]]:
+    def _get(self, ordered: bool) -> List[Dict[Any]]:
         stmt = select(ItemLabel)
+        if ordered:
+            stmt = stmt.order_by(ItemLabel.id)
         items = self._session.execute(stmt).scalars().all()
         return [
             {
@@ -185,8 +227,17 @@ class ItemLabelDBController(SimpleDBController):
         ]
 
     def delete(self, label: str) -> NoReturn:
-        stmt = select(ItemLabel).filter_by(label=label)
+        stmt = select(ItemLabel).\
+               filter_by(label=label).\
+               order_by(ItemLabel.id)
         items = self._session.execute(stmt).scalars().all()
 
+        deleted = list()
         for item in items:
             self._session.delete(item)
+            deleted.append({
+                'id': item.id,
+                'label': item.label,
+            })
+
+        return deleted
