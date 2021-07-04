@@ -48,8 +48,14 @@ class MatchComparator():
 
     def _get_transitive_results(self, winner: int, loser: int
                                 ) -> List[Tuple[int]]:
-        transitive_winners = np.where(self._result[winner] == MatchResult.LOSE)
-        transitive_losers = np.where(self._result[loser] == MatchResult.WIN)
+        transitive_winners = np.where(
+                (self._result[winner] == MatchResult.LOSE) &
+                (self._result[loser] == MatchResult.NONE)
+        )
+        transitive_losers = np.where(
+                (self._result[winner] == MatchResult.NONE) &
+                (self._result[loser] == MatchResult.WIN)
+        )
         return [(twinner, loser) for twinner in transitive_winners[0]] + \
                [(winner, tloser) for tloser in transitive_losers[0]]
 
@@ -170,4 +176,4 @@ class RatedMatchComparator(MatchComparator):
 
 class PseudoRatedMatchComparator(RatedMatchComparator):
     def _calc_victory_probability(self, rate_diff: float) -> float:
-        return rate_diff * 0.0025 + 0.5
+        return rate_diff * 0.00125 + 0.5
