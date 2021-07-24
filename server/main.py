@@ -37,6 +37,8 @@ def parse_arguments(argv: List[str]) -> argparse.Namespace:
                         help='Port no')
     parser.add_argument('--pseudo', action='store_true',
                         help='Use pseudo rating')
+    parser.add_argument('--max_size', '--size', '-s', default=400, type=int,
+                        help='Thumbnail image size')
     return parser.parse_args(argv)
 
 
@@ -68,13 +70,13 @@ def load_filenames(db_path: str, dirname: str) -> List[str]:
 def main(argv):
     args = parse_arguments(argv)
     names = load_filenames(args.output, args.input_dir)
-    logger.info('Find %d images.', len(names))
 
     comparator = create_comparater(len(names), args.output,
                                    args.method in ('rating', 'intro'),
                                    args.pseudo)
     matching = create_matching_generator(comparator, args.method)
-    iterator = ImageResponseIterator(names, comparator, matching)
+    iterator = ImageResponseIterator(names, comparator, matching,
+                                     args.max_size)
 
     start_server(args.host, args.port, iterator, comparator)
 
