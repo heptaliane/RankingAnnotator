@@ -7,6 +7,12 @@ import numpy as np
 from nptyping import NDArray
 
 from .match_result import MatchResult
+from .comparator import MatchComparator, RatedMatchComparator
+
+# Logging
+from logging import getLogger, NullHandler
+logger = getLogger(__name__)
+logger.addHandler(NullHandler())
 
 
 class MatchingGenerator(metaclass=ABCMeta):
@@ -100,7 +106,7 @@ class PseudoRatingBasedMatchingGenerator(RatingBasedMatchingGenerator):
         return rate_diff * 0.00125 + 0.5
 
 
-class IntroRatingBasedMatchingGenerator(RatingBasedMatchingGenerator):
+class IntroRatingBasedMatchingGenerator(PseudoRatingBasedMatchingGenerator):
     def __next__(self) -> Tuple[int, int]:
         matches = self._get_no_result_matches()
         if len(matches) == 0:
@@ -117,3 +123,27 @@ class IntroRatingBasedMatchingGenerator(RatingBasedMatchingGenerator):
 
         # Use rating based method
         return super().__next__()
+
+
+def create_matching_generator(comparator: MatchComparator,
+                              method: str = 'intro') -> MatchingGenerator:
+    if isinstance(comparator, RatedMatchComparator):
+        if method == 'intro':
+            logger.info('Use intro rated matching method.')
+            return IntroRatingBasedMatchingGenerator(comparator.match_result,
+                                                     comparator.rating)
+        elif method == 'rating':
+            logger.info('Use rated matching method.')
+            return PseudoRatingBasedMatchingGenerator(comparator.match_result,
+                                                      comparator.rating)
+
+    if method == 'freq':
+        logger.info('Use frequency matching method.')
+        return FrequencyMatchingGenerator(comparator.match_result)
+    elif method == 'random':
+        logger.info('Use frequency matching method.')
+        return RandomMatchingGenerator(comparator.match_result)
+
+    logger.warn('No avaliable method named "%s" is found.', method)
+    logger.info('Use default matching method.')
+    return FrequencyMatchingGenerator(comparator.match_result)

@@ -177,3 +177,17 @@ class RatedMatchComparator(MatchComparator):
 class PseudoRatedMatchComparator(RatedMatchComparator):
     def _calc_victory_probability(self, rate_diff: float) -> float:
         return rate_diff * 0.00125 + 0.5
+
+
+def create_comparater(n_items: int, db_path: str,
+                      rate: bool = True, pseudo: bool = False)\
+                      -> MatchComparator:
+    if rate:
+        logger = db.RatedMatchResultDBController(db_path)
+        if pseudo:
+            return PseudoRatedMatchComparator(n_items, logger)
+        else:
+            return RatedMatchComparator(n_items, logger)
+
+    logger = db.MatchResultDBController(db_path)
+    return MatchComparator(n_items, logger)
