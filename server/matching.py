@@ -6,8 +6,8 @@ from typing import NoReturn, Tuple, Any
 import numpy as np
 from nptyping import NDArray
 
-from .match_result import MatchResult
-from .comparator import MatchComparator, RatedMatchComparator
+from match_result import MatchResult
+from comparator import MatchComparator, RatedMatchComparator
 
 # Logging
 from logging import getLogger, NullHandler

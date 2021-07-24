@@ -4,8 +4,8 @@ from typing import NoReturn, Tuple, List, Any
 import numpy as np
 from nptyping import NDArray
 
-from . import db
-from .match_result import MatchResult
+import db
+from match_result import MatchResult
 
 
 class MatchComparator():

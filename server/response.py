@@ -6,8 +6,8 @@ import numpy as np
 import cv2
 from nptyping import NDArray
 
-from .comparator import MatchComparator
-from .matching import MatchingGenerator
+from comparator import MatchComparator
+from matching import MatchingGenerator
 
 
 def _load_image(filename: str) -> NDArray[(Any, Any, 3), int]:
@@ -52,20 +52,21 @@ class ImageResponseIterator():
         self._comparator = comparator
         self._rating = self._comparator.rating
         self._matching = matching
+        self._max_size = max_size
 
     def _get_next_id(self) -> Tuple[int, int]:
         idx = next(self._matching)
         i1, i2 = np.argsort((self._rating[idx[0]], self._rating[idx[1]]))
 
         # Higher rating is first
-        return (idx[i1], idx[i2])
+        return (idx[i1].item(), idx[i2].item())
 
     def _get_image_response(self, idx: int) -> Dict:
         name = self._names[idx]
-        thumb = _get_thumbnail(name)
+        thumb = _get_thumbnail(name, self._max_size)
         return {
             'id': idx,
-            'rate': self._rating[idx],
+            'rate': self._rating[idx].item(),
             'src': thumb,
         }
 

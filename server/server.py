@@ -4,8 +4,8 @@ import json
 from typing import NoReturn
 from tornado import web, websocket, httpserver, ioloop
 
-from .comparator import MatchComparator
-from .response import ImageResponseIterator
+from comparator import MatchComparator
+from response import ImageResponseIterator
 
 
 # Logging
@@ -14,7 +14,7 @@ logger = getLogger(__name__)
 logger.addHandler(NullHandler())
 
 
-class MainHandler(web.httpserver):
+class MainHandler(web.RequestHandler):
     def get(self):
         self.render('index.html')
 
